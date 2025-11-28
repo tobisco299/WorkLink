@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en-US" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Give Task - LocalHands</title>
+    <link href="assets/css/theme.css" rel="stylesheet" />
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top py-3 backdrop">
+      <div class="container">
+        <a
+          class="navbar-brand d-flex align-items-center fw-bolder fs-2 fst-italic"
+          href="index.html"
+          ><div class="text-info">Local</div>
+          <div class="text-warning">Hands</div></a
+        >
+        <div class="collapse navbar-collapse">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item px-2">
+              <a class="nav-link" href="index.html">Home</a>
+            </li>
+            <li class="nav-item px-2">
+              <a class="nav-link" href="find.html">Find Tasks</a>
+            </li>
+            <li class="nav-item px-2">
+              <a class="nav-link active" href="give.html">Give Tasks</a>
+            </li>
+          </ul>
+          <button id="signinBtn3" class="btn btn-primary ms-3" type="button">
+            Sign In
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container" style="padding-top: 120px; max-width: 780px">
+      <h2>Post a Task</h2>
+      <p>Create a task that others can find and apply to.</p>
+
+      <form id="postTaskForm">
+        <div class="mb-3">
+          <label class="form-label">Title</label>
+          <input type="text" id="taskTitle" class="form-control" required />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Description</label>
+          <textarea
+            id="taskDescription"
+            class="form-control"
+            rows="4"
+            required
+          ></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Category</label>
+          <input
+            type="text"
+            id="taskCategory"
+            class="form-control"
+            placeholder="e.g. Home repairs"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Location</label>
+          <input
+            type="text"
+            id="taskLocation"
+            class="form-control"
+            placeholder="City or neighborhood"
+          />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Budget</label>
+          <input
+            type="text"
+            id="taskBudget"
+            class="form-control"
+            placeholder="e.g. 2000"
+          />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Image (optional)</label>
+          <input
+            type="file"
+            id="taskImage"
+            accept="image/*"
+            class="form-control"
+          />
+          <div id="taskImagePreview" class="mt-2"></div>
+        </div>
+        <button class="btn btn-primary" type="submit">Post Task</button>
+      </form>
+
+      <div id="postResult" class="mt-3"></div>
+    </main>
+
+    <script src="vendors/@popperjs/popper.min.js"></script>
+    <script src="vendors/bootstrap/bootstrap.min.js"></script>
+    <script src="assets/js/theme.js"></script>
+    <script src="assets/js/tasks.js"></script>
+  </body>
+</html>

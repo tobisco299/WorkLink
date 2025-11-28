@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en-US" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Find Tasks - LocalHands</title>
+    <link href="assets/css/theme.css" rel="stylesheet" />
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top py-3 backdrop">
+      <div class="container">
+        <a
+          class="navbar-brand d-flex align-items-center fw-bolder fs-2 fst-italic"
+          href="index.html"
+          ><div class="text-info">Local</div>
+          <div class="text-warning">Hands</div></a
+        >
+        <div class="collapse navbar-collapse">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item px-2">
+              <a class="nav-link" href="index.html">Home</a>
+            </li>
+            <li class="nav-item px-2">
+              <a class="nav-link active" href="find.html">Find Tasks</a>
+            </li>
+            <li class="nav-item px-2">
+              <a class="nav-link" href="give.html">Give Tasks</a>
+            </li>
+          </ul>
+          <button id="signinBtn2" class="btn btn-primary ms-3" type="button">
+            Sign In
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container" style="padding-top: 120px">
+      <h2>Find Nearby Tasks</h2>
+      <p>Browse tasks posted by others. You can apply or contact the poster.</p>
+
+      <div class="row mb-4">
+        <div class="col-md-8 mb-2">
+          <input
+            id="searchInput"
+            class="form-control"
+            placeholder="Search by title, category, location"
+          />
+        </div>
+        <!-- <div class="col-md-4 mb-2">
+          <select id="categoryFilter" class="form-select">
+            <option value="all">All categories</option>
+            <option>Home repairs</option>
+            <option>Shop assistance</option>
+            <option>Construction</option>
+            <option>Deliveries and errands</option>
+            <option>Home lessons</option>
+            <option>House cleaning</option>
+          </select>
+        </div> -->
+      </div>
+
+      <div id="tasksList" class="row g-3"></div>
+    </main>
+
+    <script src="vendors/@popperjs/popper.min.js"></script>
+    <script src="vendors/bootstrap/bootstrap.min.js"></script>
+    <script src="assets/js/theme.js"></script>
+    <script src="assets/js/tasks.js"></script>
+  </body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en-US" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Profile - LocalHands</title>
+    <link href="assets/css/theme.css" rel="stylesheet" />
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top py-3 backdrop">
+      <div class="container">
+        <a
+          class="navbar-brand d-flex align-items-center fw-bolder fs-2 fst-italic"
+          href="index.html"
+          ><div class="text-info">Local</div>
+          <div class="text-warning">Hands</div></a
+        >
+      </div>
+    </nav>
+    <main class="container" style="padding-top: 120px">
+      <div id="profileContainer"></div>
+      <hr />
+      <div id="inboxContainer"></div>
+    </main>
+
+    <script src="vendors/@popperjs/popper.min.js"></script>
+    <script src="vendors/bootstrap/bootstrap.min.js"></script>
+    <script src="assets/js/theme.js"></script>
+    <script src="assets/js/tasks.js"></script>
+    <script>
+      (function () {
+        function qs(k) {
+          return new URLSearchParams(location.search).get(k);
+        }
+        const username = qs("u");
+        const user = window.LH.findUserByUsername(username);
+        const profile = document.getElementById("profileContainer");
+        if (!user) {
+          profile.innerHTML = "<p>User not found.</p>";
+          return;
+        }
+        profile.innerHTML =
+          "<h2>" +
+          user.name +
+          " (" +
+          user.username +
+          ")</h2><p>" +
+          (user.bio || "") +
+          "</p>" +
+          (user.avatar
+            ? '<img src="' + user.avatar + '" style="max-width:200px">'
+            : "");
+
+        // messages to/from this user
+        const inbox = document.getElementById("inboxContainer");
+        const msgs = window.LH.allMessages().filter(
+          (m) => m.to === user.username || m.from === user.username
+        );
+        inbox.innerHTML =
+          "<h4>Messages (" +
+          msgs.length +
+          ")</h4>" +
+          (msgs
+            .map(
+              (m) =>
+                '<div class="card p-2 mb-2"><strong>' +
+                m.from +
+                "</strong> -> <strong>" +
+                m.to +
+                "</strong><div>" +
+                m.content +
+                '</div><small class="text-muted">' +
+                (window.LH.formatDate
+                  ? window.LH.formatDate(m.createdAt)
+                  : m.createdAt) +
+                "</small></div>"
+            )
+            .join("") || "<p>No messages.</p>");
+
+        // If signed in, provide a send form
+        const cur = window.LH.currentUser ? window.LH.currentUser() : null;
+        if (cur) {
+          inbox.innerHTML +=
+            '<hr><h5>Send message</h5><form id="pmForm"><div class="mb-2"><textarea class="form-control" id="pmText" rows="3" required></textarea></div><button class="btn btn-primary">Send</button></form>';
+          document
+            .getElementById("pmForm")
+            .addEventListener("submit", function (e) {
+              e.preventDefault();
+              const content = document.getElementById("pmText").value;
+              window.LH.sendMessage(cur.username, user.username, content);
+              window.LH.showInfo("Message sent", "Your message was sent").then(
+                function () {
+                  document.getElementById("pmText").value = "";
+                  location.reload();
+                }
+              );
+            });
+        } else {
+          inbox.innerHTML += "<p>Please sign in to message this user.</p>";
+        }
+      })();
+    </script>
+  </body>
+</html>
