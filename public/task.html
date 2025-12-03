@@ -20,8 +20,7 @@
             class="navbar-brand d-flex align-items-center fw-bolder fs-2 fst-italic"
             href="#"
           >
-            <div class="text-info">          ><div class="text-info">Work</div>
-</div>
+            <div class="text-info"><div class="text-info">Work</div></div>
             <div class="text-warning">Link</div>
           </a>
           <button
@@ -84,179 +83,7 @@
         <div id="messageContainer"></div>
       </main>
 
-      <script>
-        (function () {
-          function qs(k) {
-            return new URLSearchParams(location.search).get(k);
-          }
-          const id = Number(qs("id"));
-          const tasks = window.LH.allTasks();
-          const t = tasks.find((x) => x.id === id);
-          const container = document.getElementById("taskContainer");
-          if (!t) {
-            container.innerHTML = "<p>Task not found.</p>";
-            return;
-          }
-          let html = "";
-          if (t.image)
-            html +=
-              '<img src="' +
-              t.image +
-              '" class="img-fluid mb-3" style="max-height:360px;object-fit:cover;width:100%">';
-          html += "<h2>" + t.title + "</h2>";
-          html += "<p>" + t.description + "</p>";
-          html +=
-            "<p><strong>Category:</strong> " +
-            (t.category || "-") +
-            " <strong>Location:</strong> " +
-            (t.location || "-") +
-            "</p>";
-          html +=
-            "<p><strong>Budget:</strong> " +
-            (t.budget || "-") +
-            ' <strong>Poster:</strong> <a href="profile.html?u=' +
-            encodeURIComponent(t.poster) +
-            '">' +
-            t.poster +
-            "</a></p>";
-          container.innerHTML = html;
-
-          // Applications
-          const appsEl = document.getElementById("applicationsContainer");
-          // Filter applications for THIS task only (ensure correct taskId match)
-          const apps = window.LH.allApplications().filter(
-            (a) => a && a.taskId && Number(a.taskId) === Number(t.id)
-          );
-          appsEl.innerHTML = "<h4>Applications (" + apps.length + ")</h4>";
-          if (apps.length === 0) {
-            appsEl.innerHTML += "<p>No applications yet.</p>";
-          } else {
-            apps.forEach(function (a) {
-              const card = document.createElement("div");
-              card.className = "card p-2 mb-2";
-              let inner =
-                "<strong>" +
-                a.applicant +
-                "</strong> - " +
-                (a.message || "") +
-                ' <small class="text-muted">' +
-                (window.LH.formatDate
-                  ? window.LH.formatDate(a.createdAt)
-                  : a.createdAt) +
-                "</small>";
-              if (a.status)
-                inner +=
-                  ' <span class="badge bg-secondary ms-2">' +
-                  a.status +
-                  "</span>";
-              card.innerHTML = inner;
-              // if current user is task owner, add accept/reject
-              const curFn = window.LH.currentUser;
-              const user = curFn ? curFn() : null;
-              if (user && user.username === t.poster) {
-                const actions = document.createElement("div");
-                actions.className = "mt-2";
-                if (a.status !== "accepted") {
-                  const accept = document.createElement("button");
-                  accept.className = "btn btn-success btn-sm me-2";
-                  accept.textContent = "Accept";
-                  accept.onclick = function () {
-                    window.LH.showConfirm(
-                      "Accept this application?",
-                      function () {
-                        window.LH.updateApplication(a.id, {
-                          status: "accepted",
-                        });
-                        window.LH.showInfo(
-                          "Accepted",
-                          "Application accepted"
-                        ).then(function () {
-                          location.reload();
-                        });
-                      }
-                    );
-                  };
-                  actions.appendChild(accept);
-                }
-                if (a.status !== "rejected" && a.status !== "accepted") {
-                  const reject = document.createElement("button");
-                  reject.className = "btn btn-outline-danger btn-sm";
-                  reject.textContent = "Reject";
-                  reject.onclick = function () {
-                    window.LH.showConfirm(
-                      "Reject this application?",
-                      function () {
-                        window.LH.updateApplication(a.id, {
-                          status: "rejected",
-                        });
-                        window.LH.showInfo(
-                          "Rejected",
-                          "Application rejected"
-                        ).then(function () {
-                          location.reload();
-                        });
-                      }
-                    );
-                  };
-                  actions.appendChild(reject);
-                }
-                card.appendChild(actions);
-              }
-              appsEl.appendChild(card);
-            });
-          }
-
-          // Apply form
-          const curFn = window.LH.currentUser;
-          const user = curFn ? curFn() : null;
-          if (user && user.username !== t.poster) {
-            appsEl.innerHTML +=
-              '<hr><h5>Apply for this task</h5><form id="applyForm"><div class="mb-2"><textarea class="form-control" id="applyMessage" rows="3" required></textarea></div><button class="btn btn-primary">Apply</button></form>';
-            document
-              .getElementById("applyForm")
-              .addEventListener("submit", function (e) {
-                e.preventDefault();
-                const msg = document.getElementById("applyMessage").value;
-                window.LH.addApplication({
-                  taskId: t.id,
-                  applicant: user.username,
-                  message: msg,
-                  status: "pending",
-                });
-                window.LH.showInfo(
-                  "Application sent",
-                  "Your application was sent"
-                ).then(function () {
-                  location.reload();
-                });
-              });
-          } else if (!user) {
-            appsEl.innerHTML += "<p>Please sign in to apply.</p>";
-          }
-
-          // Messaging to poster
-          const msgEl = document.getElementById("messageContainer");
-          if (user) {
-            msgEl.innerHTML =
-              '<h5>Message poster</h5><form id="msgForm"><div class="mb-2"><textarea class="form-control" id="msgText" rows="3" required></textarea></div><button class="btn btn-outline-primary">Send Message</button></form>';
-            document
-              .getElementById("msgForm")
-              .addEventListener("submit", function (e) {
-                e.preventDefault();
-                const content = document.getElementById("msgText").value;
-                window.LH.sendMessage(user.username, t.poster, content);
-                window.LH.showInfo(
-                  "Message sent",
-                  "Your message was sent"
-                ).then(function () {
-                  document.getElementById("msgText").value = "";
-                });
-              });
-          } else {
-            msgEl.innerHTML = "<p>Please sign in to message the poster.</p>";
-          }
-        })();
-      </script>
+      <!-- page script moved below after vendor and tasks.js includes -->
       <section class="py-0 bg-primary-gradient">
         <div
           class="bg-holder"
@@ -390,6 +217,173 @@
     <script src="https://polyfill.io/v3/polyfill.min.js?features=window.scroll"></script>
     <script src="assets/js/theme.js"></script>
     <script src="assets/js/tasks.js"></script>
+
+    <script>
+      (function () {
+        function qs(k) {
+          return new URLSearchParams(location.search).get(k);
+        }
+        const id = Number(qs("id"));
+        const tasks = window.LH.allTasks();
+        const t = tasks.find((x) => x.id === id);
+        const container = document.getElementById("taskContainer");
+        if (!t) {
+          container.innerHTML = "<p>Task not found.</p>";
+          return;
+        }
+        let html = "";
+        if (t.image)
+          html +=
+            '<img src="' +
+            t.image +
+            '" class="img-fluid mb-3" style="max-height:360px;object-fit:cover;width:100%">';
+        html += "<h2>" + t.title + "</h2>";
+        html += "<p>" + t.description + "</p>";
+        html +=
+          "<p><strong>Category:</strong> " +
+          (t.category || "-") +
+          " <strong>Location:</strong> " +
+          (t.location || "-") +
+          "</p>";
+        html +=
+          "<p><strong>Budget:</strong> " +
+          (t.budget || "-") +
+          ' <strong>Poster:</strong> <a href="profile.html?u=' +
+          encodeURIComponent(t.poster) +
+          '">' +
+          t.poster +
+          "</a></p>";
+        container.innerHTML = html;
+
+        // Applications
+        const appsEl = document.getElementById("applicationsContainer");
+        const apps = window.LH.allApplications().filter(
+          (a) => a && a.taskId && Number(a.taskId) === Number(t.id)
+        );
+        appsEl.innerHTML = "<h4>Applications (" + apps.length + ")</h4>";
+        if (apps.length === 0) {
+          appsEl.innerHTML += "<p>No applications yet.</p>";
+        } else {
+          apps.forEach(function (a) {
+            const card = document.createElement("div");
+            card.className = "card p-2 mb-2";
+            let inner =
+              "<strong>" +
+              a.applicant +
+              "</strong> - " +
+              (a.message || "") +
+              ' <small class="text-muted">' +
+              (window.LH.formatDate
+                ? window.LH.formatDate(a.createdAt)
+                : a.createdAt) +
+              "</small>";
+            if (a.status)
+              inner +=
+                ' <span class="badge bg-secondary ms-2">' +
+                a.status +
+                "</span>";
+            card.innerHTML = inner;
+            const curFn = window.LH.currentUser;
+            const user = curFn ? curFn() : null;
+            if (user && user.username === t.poster) {
+              const actions = document.createElement("div");
+              actions.className = "mt-2";
+              if (a.status !== "accepted") {
+                const accept = document.createElement("button");
+                accept.className = "btn btn-success btn-sm me-2";
+                accept.textContent = "Accept";
+                accept.onclick = function () {
+                  window.LH.showConfirm(
+                    "Accept this application?",
+                    function () {
+                      window.LH.updateApplication(a.id, { status: "accepted" });
+                      window.LH.showInfo(
+                        "Accepted",
+                        "Application accepted"
+                      ).then(function () {
+                        location.reload();
+                      });
+                    }
+                  );
+                };
+                actions.appendChild(accept);
+              }
+              if (a.status !== "rejected" && a.status !== "accepted") {
+                const reject = document.createElement("button");
+                reject.className = "btn btn-outline-danger btn-sm";
+                reject.textContent = "Reject";
+                reject.onclick = function () {
+                  window.LH.showConfirm(
+                    "Reject this application?",
+                    function () {
+                      window.LH.updateApplication(a.id, { status: "rejected" });
+                      window.LH.showInfo(
+                        "Rejected",
+                        "Application rejected"
+                      ).then(function () {
+                        location.reload();
+                      });
+                    }
+                  );
+                };
+                actions.appendChild(reject);
+              }
+              card.appendChild(actions);
+            }
+            appsEl.appendChild(card);
+          });
+        }
+
+        // Apply form
+        const curFn2 = window.LH.currentUser;
+        const user2 = curFn2 ? curFn2() : null;
+        if (user2 && user2.username !== t.poster) {
+          appsEl.innerHTML +=
+            '<hr><h5>Apply for this task</h5><form id="applyForm"><div class="mb-2"><textarea class="form-control" id="applyMessage" rows="3" required></textarea></div><button class="btn btn-primary">Apply</button></form>';
+          document
+            .getElementById("applyForm")
+            .addEventListener("submit", function (e) {
+              e.preventDefault();
+              const msg = document.getElementById("applyMessage").value;
+              window.LH.addApplication({
+                taskId: t.id,
+                applicant: user2.username,
+                message: msg,
+                status: "pending",
+              });
+              window.LH.showInfo(
+                "Application sent",
+                "Your application was sent"
+              ).then(function () {
+                location.reload();
+              });
+            });
+        } else if (!user2) {
+          appsEl.innerHTML += "<p>Please sign in to apply.</p>";
+        }
+
+        // Messaging to poster
+        const msgEl = document.getElementById("messageContainer");
+        if (user2) {
+          msgEl.innerHTML =
+            '<h5>Message poster</h5><form id="msgForm"><div class="mb-2"><textarea class="form-control" id="msgText" rows="3" required></textarea></div><button class="btn btn-outline-primary">Send Message</button></form>';
+          document
+            .getElementById("msgForm")
+            .addEventListener("submit", function (e) {
+              e.preventDefault();
+              const content = document.getElementById("msgText").value;
+              window.LH.sendMessage(user2.username, t.poster, content);
+              window.LH.showInfo("Message sent", "Your message was sent").then(
+                function () {
+                  document.getElementById("msgText").value = "";
+                }
+              );
+            });
+        } else {
+          msgEl.innerHTML = "<p>Please sign in to message the poster.</p>";
+        }
+      })();
+    </script>
 
     <link
       href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,200;1,300;1,400&amp;display=swap"
