@@ -78,6 +78,7 @@
 	function addApplication(app) {
 		const apps = allApplications();
 		app.id = Date.now() + Math.floor(Math.random()*999);
+		app.taskId = Number(app.taskId); // Ensure taskId is a number
 		app.createdAt = new Date().toISOString();
 		apps.push(app); saveApplications(apps);
 		return app;
