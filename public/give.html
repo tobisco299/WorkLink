@@ -7,33 +7,73 @@
     <link href="assets/css/theme.css" rel="stylesheet" />
   </head>
   <body>
-    <nav class="navbar navbar-expand-lg navbar-light fixed-top py-3 backdrop">
-      <div class="container">
-        <a
-          class="navbar-brand d-flex align-items-center fw-bolder fs-2 fst-italic"
-          href="index.html"
-          ><div class="text-info">Work</div>
-          <div class="text-warning">Link</div></a
-        >
-        <div class="collapse navbar-collapse">
-          <ul class="navbar-nav ms-auto">
-            <li class="nav-item px-2">
-              <a class="nav-link" href="index.html">Home</a>
-            </li>
-            <li class="nav-item px-2">
-              <a class="nav-link" href="find.html">Find Tasks</a>
-            </li>
-            <li class="nav-item px-2">
-              <a class="nav-link active" href="give.html">Give Tasks</a>
-            </li>
-          </ul>
-          <button id="signinBtn3" class="btn btn-primary ms-3" type="button">
-            Sign In
+    <!-- ===============================================-->
+    <!--    Main Content-->
+    <!-- ===============================================-->
+    <main class="main" id="top">
+      <nav
+        class="navbar navbar-expand-lg navbar-light fixed-top py-3 backdrop"
+        data-navbar-on-scroll="data-navbar-on-scroll"
+      >
+        <div class="container">
+          <a
+            class="navbar-brand d-flex align-items-center fw-bolder fs-2 fst-italic"
+            href="/"
+          >
+            <div class="text-info">Work</div>
+            <div class="text-warning">Link</div>
+          </a>
+          <button
+            class="navbar-toggler collapsed"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent"
+            aria-expanded="false"
+            aria-label="Toggle navigation"
+          >
+            <span class="navbar-toggler-icon"></span>
           </button>
+          <div
+            class="collapse navbar-collapse border-top border-lg-0 mt-4 mt-lg-0"
+            id="navbarSupportedContent"
+          >
+            <ul class="navbar-nav ms-auto pt-2 pt-lg-0">
+              <li class="nav-item px-2">
+                <a
+                  class="nav-link fw-medium active"
+                  aria-current="page"
+                  href="index.html"
+                  >Home</a
+                >
+              </li>
+              <li class="nav-item px-2">
+                <a class="nav-link fw-medium" href="find.html">Find Tasks</a>
+              </li>
+              <li class="nav-item px-2">
+                <a class="nav-link fw-medium" href="give.html">Give Tasks</a>
+              </li>
+              <li class="nav-item px-2">
+                <a class="nav-link fw-medium" href="categories.html"
+                  >Categories</a
+                >
+              </li>
+              <li class="nav-item px-2">
+                <a class="nav-link fw-medium" href="about.html">About</a>
+              </li>
+            </ul>
+            <form class="ps-lg-5">
+              <button
+                id="signinBtn"
+                class="btn btn-lg btn-primary rounded-pill bg-gradient order-0"
+                type="button"
+              >
+                Sign In
+              </button>
+            </form>
+          </div>
         </div>
-      </div>
-    </nav>
-
+      </nav>
     <main class="container" style="padding-top: 120px; max-width: 780px">
       <h2>Post a Task</h2>
       <p>Create a task that others can find and apply to.</p>
@@ -166,6 +206,8 @@
     <script src="vendors/is/is.min.js"></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=window.scroll"></script>
     <script src="assets/js/theme.js"></script>
+    <script src="assets/js/firebase-config.js"></script>
+    <script type="module" src="assets/js/firebase-init.js"></script>
     <script src="assets/js/tasks.js"></script>
 
     <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,200;1,300;1,400&amp;display=swap" rel="stylesheet">

@@ -6,9 +6,66 @@
 	function $(selector) { return document.querySelector(selector); }
 	function $all(selector) { return Array.from(document.querySelectorAll(selector)); }
 
-	// Helpers
-	function read(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
-	function write(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+	// Helpers + Firestore-backed store
+	const STORE_KEYS = ['lh_users','lh_tasks','lh_applications','lh_messages','lh_payments','lh_currentUser'];
+	const store = {};
+
+	function _loadFromLocal() {
+		STORE_KEYS.forEach(k => {
+			try {
+				const raw = localStorage.getItem(k);
+				if (raw !== null) store[k] = JSON.parse(raw);
+			} catch(e) { /* ignore */ }
+		});
+	}
+
+	async function _syncFromFirestoreIfAvailable() {
+		if (typeof window === 'undefined') return;
+		// Wait for firebase-init.js to set the ready flag
+		const wait = (ms) => new Promise(r => setTimeout(r, ms));
+		let tries = 0;
+		while (!window.__FB_READY__ && tries < 50) { await wait(100); tries++; }
+		if (!window.FB || !window.FB.available) {
+			console.info('Firestore not available, using localStorage only');
+			return;
+		}
+		try {
+			console.info('Syncing app state from Firestore...');
+			for (const k of STORE_KEYS) {
+				const doc = await window.FB.getDoc('app', k);
+				if (doc && doc.value !== undefined) {
+					store[k] = doc.value;
+					console.debug(`Synced ${k} from Firestore`);
+				} else if (store[k] !== undefined) {
+					// push local value to firestore
+					await window.FB.set('app', k, { value: store[k] });
+					console.debug(`Pushed ${k} to Firestore`);
+				}
+			}
+			console.info('✓ Initial sync from Firestore complete');
+		} catch (e) { console.error('Error syncing from Firestore', e); }
+	}
+
+	function read(key, fallback) { try { return (store.hasOwnProperty(key) ? store[key] : (JSON.parse(localStorage.getItem(key)) ?? fallback)) ?? fallback; } catch { return fallback; } }
+	function write(key, val) { 
+		try { 
+			store[key] = val; 
+			localStorage.setItem(key, JSON.stringify(val)); 
+			console.debug(`Wrote ${key} to localStorage`);
+		} catch(e) { 
+			console.warn('localStorage write failed:', e); 
+		}
+		// async persist to Firestore if available
+		if (typeof window !== 'undefined' && window.FB && window.FB.available) {
+			window.FB.set('app', key, { value: val })
+				.then(() => console.debug(`Persisted ${key} to Firestore`))
+				.catch(err => console.error(`FB set failed for ${key}:`, err));
+		}
+	}
+
+	// initialize store from localStorage and attempt Firestore sync
+	_loadFromLocal();
+	_syncFromFirestoreIfAvailable();
 
 	// Ensure stores
 	if (!read('lh_users', null)) write('lh_users', []);
@@ -49,7 +106,11 @@
 	}
 
 	function currentUser() { return read('lh_currentUser', null); }
-	function signOut() { localStorage.removeItem('lh_currentUser'); updateSigninButtons(); }
+	function signOut() { try { delete store['lh_currentUser']; localStorage.removeItem('lh_currentUser'); } catch(e){} updateSigninButtons();
+		if (typeof window !== 'undefined' && window.FB && window.FB.available) {
+			window.FB.set('app', 'lh_currentUser', { value: null }).catch(()=>{});
+		}
+	}
 
 	// Tasks
 	function allTasks() { return read('lh_tasks', []); }
@@ -122,7 +183,7 @@
 		msgs.push(msg); saveMessages(msgs); return msg;
 	}
 
-	// Payments (demo) - minimal records only
+	// Payments (mock) - minimal records only
 	function allPayments() { return read('lh_payments', []); }
 	function savePayments(p) { write('lh_payments', p); }
 	function createPayment(taskId, fromUser, toUser, amount) {
@@ -148,7 +209,7 @@
 		if (idx === -1) return null;
 		users[idx].permits = (users[idx].permits || 0) + count;
 		saveUsers(users);
-		// record a demo payment (to: platform)
+		// record a mock payment (to: platform)
 		createPayment(null, username, 'platform', 100 * count);
 		return users[idx];
 	}
@@ -338,12 +399,7 @@
 			myList.innerHTML = '';
 			const user = currentUser();
 			if (user) {
-				const userTasks = allTasks().filter(function (t) { return t.poster === user.username; });
-				if (userTasks.length === 0) {
-					myList.innerHTML = '<p>You have not posted any task yet!</p>';
-				} else {
-					userTasks.forEach(function (t) { renderTaskCard(t, myList); });
-				}
+				allTasks().filter(function (t) { return t.poster === user.username; }).forEach(function (t) { renderTaskCard(t, myList); });
 			} else {
 				myList.innerHTML = '<p>Please sign in to see your tasks.</p>';
 			}
@@ -420,7 +476,7 @@
 		rerenderAll();
 	});
 
-	// show some functions for task/detail/profile pages
+	// Expose some functions for task/detail/profile pages
 	window.LH = {
 		currentUser: currentUser,
 		signOut: signOut,
@@ -442,7 +498,7 @@
 		showConfirm: showConfirm
 	};
 
-	// show updateApplication and formatDate
+	// expose updateApplication and formatDate
 	window.LH.updateApplication = updateApplication;
 	window.LH.formatDate = formatDate;
 

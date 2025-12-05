@@ -27,6 +27,8 @@
     <script src="vendors/@popperjs/popper.min.js"></script>
     <script src="vendors/bootstrap/bootstrap.min.js"></script>
     <script src="assets/js/theme.js"></script>
+    <script src="assets/js/firebase-config.js"></script>
+    <script type="module" src="assets/js/firebase-init.js"></script>
     <script src="assets/js/tasks.js"></script>
     <script>
       (function () {
@@ -106,20 +108,20 @@
             const form = document.getElementById('editProfileForm');
             form.onsubmit = function (e) {
               e.preventDefault();
-              // update user in localStorage
               try {
-                const users = JSON.parse(localStorage.getItem('lh_users') || '[]');
-                const idx = users.findIndex(u => u.username === user.username);
-                if (idx === -1) return window.LH.showInfo('Error', 'User not found');
-                users[idx].name = document.getElementById('fldDisplayName').value || users[idx].name;
-                users[idx].email = document.getElementById('fldEmail').value || users[idx].email;
-                users[idx].phone = document.getElementById('fldPhone').value || users[idx].phone;
-                users[idx].nin = document.getElementById('fldNIN').value || users[idx].nin;
-                users[idx].state = document.getElementById('fldState').value || users[idx].state;
-                users[idx].address = document.getElementById('fldAddress').value || users[idx].address;
-                users[idx].bio = document.getElementById('fldBio').value || users[idx].bio;
-                users[idx].avatar = document.getElementById('fldAvatar').value || users[idx].avatar;
-                localStorage.setItem('lh_users', JSON.stringify(users));
+                const updates = {
+                  username: user.username,
+                  name: document.getElementById('fldDisplayName').value || user.name,
+                  email: document.getElementById('fldEmail').value || user.email,
+                  phone: document.getElementById('fldPhone').value || user.phone,
+                  nin: document.getElementById('fldNIN').value || user.nin,
+                  state: document.getElementById('fldState').value || user.state,
+                  address: document.getElementById('fldAddress').value || user.address,
+                  bio: document.getElementById('fldBio').value || user.bio,
+                  avatar: document.getElementById('fldAvatar').value || user.avatar
+                };
+                const saved = window.LH.updateUser(updates);
+                if (!saved) return window.LH.showInfo('Error', 'User not found');
                 m.hide();
                 window.LH.showInfo('Saved', 'Profile updated').then(function () { location.reload(); });
               } catch (err) { console.error(err); window.LH.showInfo('Error','Unable to save profile'); }

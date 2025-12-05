@@ -103,6 +103,10 @@
     <script src="vendors/bootstrap/bootstrap.min.js"></script>
     <script src="vendors/is/is.min.js"></script>
     <script src="assets/js/theme.js"></script>
+    <script src="assets/js/paystack-config.js"></script>
+    <script src="assets/js/paystack.js"></script>
+    <script src="assets/js/firebase-config.js"></script>
+    <script type="module" src="assets/js/firebase-init.js"></script>
     <script src="assets/js/tasks.js"></script>
     <script>
       (function () {
@@ -128,16 +132,54 @@
           "</strong></p>";
         document
           .getElementById("buyBtn")
-          .addEventListener("click", function () {
+          .addEventListener("click", async function () {
             const count =
               Number(document.getElementById("permitCount").value) || 1;
-            window.LH.purchasePermit(cur.username, count);
-            window.LH.showInfo(
-              "Purchased",
-              "You purchased " + count + " permit(s) for ₦" + 100 * count
-            ).then(function () {
-              window.location = "find.html";
-            });
+            const amount = 100 * count;
+            const buyBtn = document.getElementById("buyBtn");
+            
+            // Disable button during payment
+            buyBtn.disabled = true;
+            buyBtn.textContent = 'Processing...';
+            
+            try {
+              // Initiate Paystack payment
+              const email = cur.email || cur.username + '@worklink.app';
+              
+              // Validate email format
+              if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+                window.LH.showInfo(
+                  "Email Required",
+                  "Please update your profile with a valid email address to proceed with payment."
+                );
+                buyBtn.disabled = false;
+                buyBtn.textContent = 'Buy';
+                return;
+              }
+              
+              await window.initializePaystackPayment({
+                email: email,
+                amount: amount,
+                username: cur.username,
+                permitCount: count
+              });
+              
+              // Payment successful
+              window.LH.showInfo(
+                "Payment Successful",
+                "You purchased " + count + " permit(s) for ₦" + amount
+              ).then(function () {
+                window.location = "find.html";
+              });
+            } catch (err) {
+              console.error('Payment error:', err);
+              buyBtn.disabled = false;
+              buyBtn.textContent = 'Buy';
+              window.LH.showInfo(
+                "Payment Failed",
+                err.message || "Payment could not be processed. Please try again."
+              );
+            }
           });
       })();
     </script>

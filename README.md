@@ -5,3 +5,4 @@ WorkLink is a micro-jobs marketplace that connects people in local and low-incom
 ## Features
 
 - **Micro-jobs marketplace:** WorkLink connects people in local and low-income communities with nearby paid tasks, such as cleaning, repairs, errands, and shop assistance.
+
