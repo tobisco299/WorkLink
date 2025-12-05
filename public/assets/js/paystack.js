@@ -61,45 +61,52 @@
     });
   };
 
-  // Record the payment in localStorage
-  function recordPaystackPayment(paystackResponse, options) {
-    return new Promise(function(resolve, reject) {
-      try {
-        const payments = JSON.parse(localStorage.getItem('lh_payments') || '[]');
-        
-        const payment = {
-          id: Date.now() + Math.floor(Math.random() * 999),
-          taskId: null,
-          from: options.username,
-          to: 'platform',
-          amount: options.amount,
-          permitCount: options.permitCount,
-          status: 'completed',
-          paymentMethod: 'paystack',
-          paystackReference: paystackResponse.reference,
-          paystackAccessCode: paystackResponse.access_code,
-          createdAt: new Date().toISOString()
-        };
-        
-        payments.push(payment);
-        localStorage.setItem('lh_payments', JSON.stringify(payments));
-        
-        // Update user permits
-        updateUserPermitsAfterPayment(options.username, options.permitCount);
-        
-        resolve(payment);
-      } catch (err) {
-        reject(err);
+  // Record the payment (prefer using app APIs so Firestore sync happens)
+  async function recordPaystackPayment(paystackResponse, options) {
+    try {
+      // If the app exposes LH helpers, prefer them (they will sync to Firestore)
+      if (window.LH && typeof window.LH.createPayment === 'function' && typeof window.LH.purchasePermit === 'function') {
+        const p = await window.LH.createPayment(null, options.username, 'platform', options.amount);
+        try { await window.LH.purchasePermit(options.username, options.permitCount); } catch(e) { /* non-fatal */ }
+        // augment with Paystack metadata
+        if (p) {
+          p.paymentMethod = 'paystack';
+          p.paystackReference = paystackResponse.reference;
+          p.paystackAccessCode = paystackResponse.access_code;
+        }
+        return p;
       }
-    });
+
+      // Fallback: localStorage only
+      const payments = JSON.parse(localStorage.getItem('lh_payments') || '[]');
+      const payment = {
+        id: Date.now() + Math.floor(Math.random() * 999),
+        taskId: null,
+        from: options.username,
+        to: 'platform',
+        amount: options.amount,
+        permitCount: options.permitCount,
+        status: 'completed',
+        paymentMethod: 'paystack',
+        paystackReference: paystackResponse.reference,
+        paystackAccessCode: paystackResponse.access_code,
+        createdAt: new Date().toISOString()
+      };
+      payments.push(payment);
+      localStorage.setItem('lh_payments', JSON.stringify(payments));
+      // Update user permits in local fallback
+      updateUserPermitsAfterPayment(options.username, options.permitCount);
+      return payment;
+    } catch (err) {
+      throw err;
+    }
   }
 
-  // Update user's permit count after successful payment
+  // Update user's permit count after successful payment (local fallback only)
   function updateUserPermitsAfterPayment(username, permitCount) {
     try {
       const users = JSON.parse(localStorage.getItem('lh_users') || '[]');
       const userIndex = users.findIndex(u => u.username === username);
-      
       if (userIndex !== -1) {
         users[userIndex].permits = (users[userIndex].permits || 0) + permitCount;
         localStorage.setItem('lh_users', JSON.stringify(users));

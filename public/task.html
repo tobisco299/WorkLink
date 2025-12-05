@@ -221,13 +221,13 @@
     <script src="assets/js/tasks.js"></script>
 
     <script>
-      document.addEventListener('DOMContentLoaded', function () {
+      document.addEventListener('DOMContentLoaded', async function () {
         function qs(k) {
           return new URLSearchParams(location.search).get(k);
         }
         
         const id = Number(qs("id"));
-        const tasks = window.LH.allTasks();
+        const tasks = await window.LH.allTasks();
         const t = tasks.find((x) => x.id === id);
         const container = document.getElementById("taskContainer");
         if (!t) {
@@ -260,7 +260,7 @@
 
         // Applications
         const appsEl = document.getElementById("applicationsContainer");
-        const apps = window.LH.allApplications().filter(
+        const apps = (await window.LH.allApplications()).filter(
           (a) => a && a.taskId && Number(a.taskId) === Number(t.id)
         );
         appsEl.innerHTML = "<h4>Applications (" + apps.length + ")</h4>";
@@ -298,14 +298,13 @@
                 accept.onclick = function () {
                   window.LH.showConfirm(
                     "Accept this application?",
-                    function () {
-                      window.LH.updateApplication(a.id, { status: "accepted" });
-                      window.LH.showInfo(
+                    async function () {
+                      await window.LH.updateApplication(a.id, { status: "accepted" });
+                      await window.LH.showInfo(
                         "Accepted",
                         "Application accepted"
-                      ).then(function () {
-                        location.reload();
-                      });
+                      );
+                      location.reload();
                     }
                   );
                 };
@@ -318,14 +317,13 @@
                 reject.onclick = function () {
                   window.LH.showConfirm(
                     "Reject this application?",
-                    function () {
-                      window.LH.updateApplication(a.id, { status: "rejected" });
-                      window.LH.showInfo(
+                    async function () {
+                      await window.LH.updateApplication(a.id, { status: "rejected" });
+                      await window.LH.showInfo(
                         "Rejected",
                         "Application rejected"
-                      ).then(function () {
-                        location.reload();
-                      });
+                      );
+                      location.reload();
                     }
                   );
                 };
@@ -345,10 +343,10 @@
             '<hr><h5>Apply for this task</h5><form id="applyForm"><div class="mb-2"><textarea class="form-control" id="applyMessage" rows="3" required></textarea></div><button class="btn btn-primary">Apply</button></form>';
           document
             .getElementById("applyForm")
-            .addEventListener("submit", function (e) {
+            .addEventListener("submit", async function (e) {
               e.preventDefault();
               const msg = document.getElementById("applyMessage").value;
-              const res = window.LH.applyToTask({
+              const res = await window.LH.applyToTask({
                 taskId: t.id,
                 applicant: user2.username,
                 message: msg,
@@ -371,12 +369,11 @@
                 }
                 return;
               }
-              window.LH.showInfo(
+              await window.LH.showInfo(
                 "Application sent",
                 "Your application was sent"
-              ).then(function () {
-                location.reload();
-              });
+              );
+              location.reload();
             });
         } else if (!user2) {
           appsEl.innerHTML += "<p>Please sign in to apply.</p>";
@@ -389,15 +386,12 @@
             '<h5>Message poster</h5><form id="msgForm"><div class="mb-2"><textarea class="form-control" id="msgText" rows="3" required></textarea></div><button class="btn btn-outline-primary">Send Message</button></form>';
           document
             .getElementById("msgForm")
-            .addEventListener("submit", function (e) {
+            .addEventListener("submit", async function (e) {
               e.preventDefault();
               const content = document.getElementById("msgText").value;
-              window.LH.sendMessage(user2.username, t.poster, content);
-              window.LH.showInfo("Message sent", "Your message was sent").then(
-                function () {
-                  document.getElementById("msgText").value = "";
-                }
-              );
+              await window.LH.sendMessage(user2.username, t.poster, content);
+              await window.LH.showInfo("Message sent", "Your message was sent");
+              document.getElementById("msgText").value = "";
             });
         } else {
           msgEl.innerHTML = "<p>Please sign in to message the poster.</p>";

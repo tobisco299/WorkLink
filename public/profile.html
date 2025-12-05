@@ -162,16 +162,13 @@
             '<hr><h5>Send message</h5><form id="pmForm"><div class="mb-2"><textarea class="form-control" id="pmText" rows="3" required></textarea></div><button class="btn btn-primary">Send</button></form>';
           document
             .getElementById("pmForm")
-            .addEventListener("submit", function (e) {
+            .addEventListener("submit", async function (e) {
               e.preventDefault();
               const content = document.getElementById("pmText").value;
-              window.LH.sendMessage(cur.username, user.username, content);
-              window.LH.showInfo("Message sent", "Your message was sent").then(
-                function () {
-                  document.getElementById("pmText").value = "";
-                  location.reload();
-                }
-              );
+              await window.LH.sendMessage(cur.username, user.username, content);
+              await window.LH.showInfo("Message sent", "Your message was sent");
+              document.getElementById("pmText").value = "";
+              location.reload();
             });
         } else {
           inbox.innerHTML += "<p>Please sign in to message this user.</p>";

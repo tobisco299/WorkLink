@@ -84,128 +84,186 @@
 	function signOut() { localStorage.removeItem('lh_currentUser'); updateSigninButtons(); }
 
 	// Tasks
-	function allTasks() { return read('lh_tasks', []); }
-	function saveTasks(tasks) { write('lh_tasks', tasks); }
+	// Cached remote data (populated once at page load)
+	let __CACHED_REMOTE_TASKS__ = null;
+	
+	// Synchronous local read (for immediate UI updates)
+	function allTasksLocal() { return read('lh_tasks', []); }
+	
+	// Async read that prefers remote Firestore when available
+	async function allTasks() {
+		// If remote cache is populated, use it
+		if (__CACHED_REMOTE_TASKS__ !== null) {
+			return __CACHED_REMOTE_TASKS__;
+		}
+		// If Firestore ready, fetch from remote and cache it
+		if (isFirestoreReady()) {
+			try {
+				const remote = await window.FB.getAll('lh_tasks');
+				if (remote && Array.isArray(remote)) {
+					const mapped = remote.map(r => {
+						const obj = Object.assign({}, r);
+						if (!obj.id) obj.id = obj.localId || obj._id || Date.now();
+						return obj;
+					});
+					__CACHED_REMOTE_TASKS__ = mapped;
+					write('lh_tasks', mapped);
+					return mapped;
+				}
+			} catch (e) { console.warn('Failed to fetch tasks from Firestore', e); }
+		}
+		// Fallback to local
+		return allTasksLocal();
+	}
+	
+	function saveTasks(tasks) { write('lh_tasks', tasks); __CACHED_REMOTE_TASKS__ = tasks; }
 
 	function isFirestoreReady() {
 		return window.__FB_READY__ && window.FB && window.FB.available;
 	}
 
-	function addTask(task) {
-		const tasks = allTasks();
+	async function addTask(task) {
+		const tasks = allTasksLocal();
 		task.id = Date.now();
 		task.createdAt = new Date().toISOString();
 		task.applications = [];
 		tasks.unshift(task);
 		saveTasks(tasks);
-		// Sync to Firestore in background when available
+		// If Firestore available, write and wait so other clients can see it immediately
 		if (isFirestoreReady()) {
-			(async function () {
-				try {
-					// Add localId for mapping
-					const payload = Object.assign({}, task, { localId: task.id });
-					await window.FB.add('lh_tasks', payload);
-				} catch (e) { console.error('Failed to sync task to Firestore', e); }
-			})();
+			try {
+				const payload = Object.assign({}, task, { localId: task.id });
+				const remote = await window.FB.add('lh_tasks', payload);
+				// store mapping if needed (not persisted) by adding remoteId property locally
+				task._remoteId = remote && remote._id ? remote._id : null;
+				// update local cache to reflect any remote id
+				saveTasks(allTasksLocal());
+			} catch (e) {
+				console.error('Failed to sync task to Firestore', e);
+			}
 		}
 		return task;
 	}
-	function updateTask(updated) {
-		const tasks = allTasks().map(t => t.id === updated.id ? updated : t);
+	async function updateTask(updated) {
+		const tasks = allTasksLocal().map(t => t.id === updated.id ? updated : t);
 		saveTasks(tasks);
 		if (isFirestoreReady()) {
-			(async function () {
-				try {
-					// try find remote by localId
-					const rem = await window.FB.queryEqual('lh_tasks', 'localId', updated.id);
-					if (rem && rem.length > 0) {
-						await window.FB.set('lh_tasks', rem[0]._id, Object.assign({}, updated, { localId: updated.id }));
-					} else {
-						await window.FB.add('lh_tasks', Object.assign({}, updated, { localId: updated.id }));
-					}
-				} catch (e) { console.error('Failed to update task in Firestore', e); }
-			})();
+			try {
+				// try find remote by localId
+				const rem = await window.FB.queryEqual('lh_tasks', 'localId', updated.id);
+				if (rem && rem.length > 0) {
+					await window.FB.set('lh_tasks', rem[0]._id, Object.assign({}, updated, { localId: updated.id }));
+				} else {
+					await window.FB.add('lh_tasks', Object.assign({}, updated, { localId: updated.id }));
+				}
+			} catch (e) { console.error('Failed to update task in Firestore', e); }
 		}
+		return updated;
 	}
-	function removeTask(id) {
-		const tasks = allTasks().filter(t => t.id !== id);
+	async function removeTask(id) {
+		const tasks = allTasksLocal().filter(t => t.id !== id);
 		saveTasks(tasks);
 		if (isFirestoreReady()) {
-			(async function () {
-				try {
-					const rem = await window.FB.queryEqual('lh_tasks', 'localId', id);
-					if (rem && rem.length>0) await window.FB.delete('lh_tasks', rem[0]._id);
-				} catch (e) { console.error('Failed to remove task from Firestore', e); }
-			})();
+			try {
+				const rem = await window.FB.queryEqual('lh_tasks', 'localId', id);
+				if (rem && rem.length>0) await window.FB.delete('lh_tasks', rem[0]._id);
+			} catch (e) { console.error('Failed to remove task from Firestore', e); }
 		}
 	}
 
 	// Applications
-	function allApplications() { return read('lh_applications', []); }
-	function saveApplications(a) { write('lh_applications', a); }
-	function addApplication(app) {
-		const apps = allApplications();
+	// Cached remote data (populated once at page load)
+	let __CACHED_REMOTE_APPLICATIONS__ = null;
+	
+	// Synchronous local read (for immediate UI updates)
+	function allApplicationsLocal() { return read('lh_applications', []); }
+	
+	// Async read that prefers remote Firestore when available
+	async function allApplications() {
+		// If remote cache is populated, use it
+		if (__CACHED_REMOTE_APPLICATIONS__ !== null) {
+			return __CACHED_REMOTE_APPLICATIONS__;
+		}
+		// If Firestore ready, fetch from remote and cache it
+		if (isFirestoreReady()) {
+			try {
+				const remote = await window.FB.getAll('lh_applications');
+				if (remote && Array.isArray(remote)) {
+					const mapped = remote.map(r => {
+						const obj = Object.assign({}, r);
+						if (!obj.id) obj.id = obj.localId || obj._id || Date.now();
+						return obj;
+					});
+					__CACHED_REMOTE_APPLICATIONS__ = mapped;
+					write('lh_applications', mapped);
+					return mapped;
+				}
+			} catch (e) { console.warn('Failed to fetch applications from Firestore', e); }
+		}
+		// Fallback to local
+		return allApplicationsLocal();
+	}
+	
+	function saveApplications(a) { write('lh_applications', a); __CACHED_REMOTE_APPLICATIONS__ = a; }
+	async function addApplication(app) {
+		// create application locally and persist, then sync to Firestore (await when available)
+		const apps = allApplicationsLocal();
 		app.id = Date.now() + Math.floor(Math.random()*999);
 		app.taskId = Number(app.taskId); // Ensure taskId is a number
 		app.createdAt = new Date().toISOString();
 		apps.push(app); saveApplications(apps);
 		if (isFirestoreReady()) {
-			(async function(){
-				try { await window.FB.add('lh_applications', Object.assign({}, app, { localId: app.id })); } catch(e){ console.error('Failed to sync application to Firestore', e); }
-			})();
+			try {
+				const payload = Object.assign({}, app, { localId: app.id });
+				await window.FB.add('lh_applications', payload);
+			} catch(e) { console.error('Failed to sync application to Firestore', e); }
 		}
 		return app;
 	}
 
-	function updateApplication(id, updates) {
-		const apps = allApplications().map(a => a.id === id ? Object.assign({}, a, updates) : a);
+	async function updateApplication(id, updates) {
+		const apps = allApplicationsLocal().map(a => a.id === id ? Object.assign({}, a, updates) : a);
 		saveApplications(apps);
 		if (isFirestoreReady()) {
-			(async function(){
-				try {
-					const rem = await window.FB.queryEqual('lh_applications', 'localId', id);
-					if (rem && rem.length>0) await window.FB.set('lh_applications', rem[0]._id, Object.assign({}, updates, { localId: id }));
-					else await window.FB.add('lh_applications', Object.assign({}, updates, { localId: id }));
-				} catch(e){ console.error('Failed to sync application update to Firestore', e); }
-			})();
+			try {
+				const rem = await window.FB.queryEqual('lh_applications', 'localId', id);
+				if (rem && rem.length>0) await window.FB.set('lh_applications', rem[0]._id, Object.assign({}, updates, { localId: id }));
+				else await window.FB.add('lh_applications', Object.assign({}, updates, { localId: id }));
+			} catch(e){ console.error('Failed to sync application update to Firestore', e); }
 		}
 		// if accepted, also mark task
 		if (updates.status === 'accepted') {
 			const app = apps.find(a => a.id === id);
 			if (app) {
-				const tasks = allTasks();
+				const tasks = allTasksLocal();
 				const task = tasks.find(t => t.id === app.taskId);
 				if (task) {
 					task.assignedTo = app.applicant;
 					task.status = 'assigned';
-					updateTask(task);
+					await updateTask(task);
 				}
 			}
 		}
 		// send notification message to applicant including task title
-		const app = allApplications().find(a => a.id === id);
+		const app = allApplicationsLocal().find(a => a.id === id);
 		if (app) {
-			const task = allTasks().find(t => t.id === app.taskId);
+			const task = allTasksLocal().find(t => t.id === app.taskId);
 			const title = task ? (task.title || ('#'+task.id)) : ('#'+app.taskId);
 			const text = updates.status === 'accepted'
 				? `Your application for "${title}" was accepted.`
 				: `Your application for "${title}" was rejected.`;
-			sendMessage(currentUser().username, app.applicant, text);
+			await sendMessage(currentUser().username, app.applicant, text);
 		}
 		return apps.find(a=>a.id===id);
-	}
-
-	// Messages
+	}	// Messages
 	function allMessages() { return read('lh_messages', []); }
 	function saveMessages(m) { write('lh_messages', m); }
-	function sendMessage(from, to, content) {
+	async function sendMessage(from, to, content) {
 		const msgs = allMessages();
 		const msg = {id: Date.now()+Math.floor(Math.random()*99), from, to, content, createdAt:new Date().toISOString()};
 		msgs.push(msg); saveMessages(msgs);
 		if (isFirestoreReady()) {
-			(async function(){
-				try { await window.FB.add('lh_messages', Object.assign({}, msg, { localId: msg.id })); } catch(e){ console.error('Failed to sync message to Firestore', e); }
-			})();
+			try { await window.FB.add('lh_messages', Object.assign({}, msg, { localId: msg.id })); } catch(e){ console.error('Failed to sync message to Firestore', e); }
 		}
 		return msg;
 	}
@@ -213,14 +271,12 @@
 	// Payments (demo) - minimal records only
 	function allPayments() { return read('lh_payments', []); }
 	function savePayments(p) { write('lh_payments', p); }
-	function createPayment(taskId, fromUser, toUser, amount) {
+	async function createPayment(taskId, fromUser, toUser, amount) {
 		const payments = allPayments();
 		const p = {id: Date.now()+Math.floor(Math.random()*999), taskId, from:fromUser, to:toUser, amount, status:'completed', createdAt:new Date().toISOString()};
 		payments.push(p); savePayments(payments);
 		if (isFirestoreReady()) {
-			(async function(){
-				try { await window.FB.add('lh_payments', Object.assign({}, p, { localId: p.id })); } catch(e){ console.error('Failed to sync payment to Firestore', e); }
-			})();
+			try { await window.FB.add('lh_payments', Object.assign({}, p, { localId: p.id })); } catch(e){ console.error('Failed to sync payment to Firestore', e); }
 		}
 		return p;
 	}
@@ -235,7 +291,7 @@
 		return users[idx];
 	}
 
-	function purchasePermit(username, count) {
+	async function purchasePermit(username, count) {
 		count = Number(count) || 1;
 		const users = allUsers();
 		const idx = users.findIndex(u => u.username === username);
@@ -243,7 +299,19 @@
 		users[idx].permits = (users[idx].permits || 0) + count;
 		saveUsers(users);
 		// record a demo payment (to: platform)
-		createPayment(null, username, 'platform', 100 * count);
+		try { await createPayment(null, username, 'platform', 100 * count); } catch(e){ console.error('Failed to record payment', e); }
+		// try sync user permits to Firestore when available
+		if (isFirestoreReady()) {
+			try {
+				const rem = await window.FB.queryEqual('lh_users', 'username', username);
+				const payload = Object.assign({}, users[idx]);
+				if (rem && rem.length>0) {
+					await window.FB.set('lh_users', rem[0]._id, payload);
+				} else {
+					await window.FB.add('lh_users', payload);
+				}
+			} catch(e){ console.error('Failed to sync user permit to Firestore', e); }
+		}
 		return users[idx];
 	}
 
@@ -272,13 +340,13 @@
 		return false;
 	}
 
-	function applyToTask(app) {
+	async function applyToTask(app) {
 		if (!app || !app.applicant) return {ok:false, message:'Invalid application'};
 		if (!hasPermit(app.applicant)) return {ok:false, message:'No permit available', code:'no_permit'};
 		// consume permit and add application
 		const consumed = consumePermit(app.applicant);
 		if (!consumed) return {ok:false, message:'Unable to consume permit'};
-		const created = addApplication(app);
+		const created = await addApplication(app);
 		return {ok:true, app: created};
 	}
 
@@ -409,39 +477,54 @@
 		actions.appendChild(view);
 		const user = currentUser();
 		if (user && user.username === t.poster) {
-			const del = document.createElement('button'); del.className='btn btn-danger btn-sm'; del.textContent='Delete'; del.onclick = function (){ showConfirm('Delete this task?', function(){ removeTask(t.id); rerenderAll(); }); };
+			const del = document.createElement('button'); del.className='btn btn-danger btn-sm'; del.textContent='Delete'; del.onclick = function (){ showConfirm('Delete this task?', async function(){ await removeTask(t.id); try{ rerenderAll(); }catch(e){} }); };
 			actions.appendChild(del);
 		}
 		card.appendChild(actions); col.appendChild(card); container.appendChild(col);
 	}
 
 	function rerenderAll() {
-		const listEl = document.getElementById('tasksList');
-		if (listEl) {
-			listEl.innerHTML = '';
-			const q = (document.getElementById('searchInput') && document.getElementById('searchInput').value || '').toLowerCase();
-			const cat = (document.getElementById('categoryFilter') && document.getElementById('categoryFilter').value) || '';
-			allTasks().filter(function (t) {
-				if (cat && cat !== 'all' && t.category !== cat) return false;
-				if (!q) return true;
-				return (t.title||'').toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q) || (t.category||'').toLowerCase().includes(q) || (t.location||'').toLowerCase().includes(q);
-			}).forEach(function (t) { renderTaskCard(t, listEl); });
-		}
-		const myList = document.getElementById('myTasksList');
-		if (myList) {
-			myList.innerHTML = '';
-			const user = currentUser();
-			if (user) {
-				const userTasks = allTasks().filter(function (t) { return t.poster === user.username; });
-				if (userTasks.length === 0) {
-					myList.innerHTML = '<p>You have not posted any task yet!</p>';
-				} else {
-					userTasks.forEach(function (t) { renderTaskCard(t, myList); });
+		// Async function to load remote data if not cached
+		(async function(){
+			try {
+				// Load remote tasks and applications on first render
+				if (__CACHED_REMOTE_TASKS__ === null && isFirestoreReady()) {
+					await allTasks();
 				}
-			} else {
-				myList.innerHTML = '<p>Please sign in to see your tasks.</p>';
-			}
-		}
+				if (__CACHED_REMOTE_APPLICATIONS__ === null && isFirestoreReady()) {
+					await allApplications();
+				}
+			} catch(e){ console.warn('Remote data load failed', e); }
+			// Re-render with latest data
+			try {
+				const listEl = document.getElementById('tasksList');
+				if (listEl) {
+					listEl.innerHTML = '';
+					const q = (document.getElementById('searchInput') && document.getElementById('searchInput').value || '').toLowerCase();
+					const cat = (document.getElementById('categoryFilter') && document.getElementById('categoryFilter').value) || '';
+					allTasksLocal().filter(function (t) {
+						if (cat && cat !== 'all' && t.category !== cat) return false;
+						if (!q) return true;
+						return (t.title||'').toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q) || (t.category||'').toLowerCase().includes(q) || (t.location||'').toLowerCase().includes(q);
+					}).forEach(function (t) { renderTaskCard(t, listEl); });
+				}
+				const myList = document.getElementById('myTasksList');
+				if (myList) {
+					myList.innerHTML = '';
+					const user = currentUser();
+					if (user) {
+						const userTasks = allTasksLocal().filter(function (t) { return t.poster === user.username; });
+						if (userTasks.length === 0) {
+							myList.innerHTML = '<p>You have not posted any task yet!</p>';
+						} else {
+							userTasks.forEach(function (t) { renderTaskCard(t, myList); });
+						}
+					} else {
+						myList.innerHTML = '<p>Please sign in to see your tasks.</p>';
+					}
+				}
+			} catch(e){ console.warn('Render failed', e); }
+		})();
 	}
 
 	// File helper
@@ -455,6 +538,70 @@
 	// Bind
 	document.addEventListener('DOMContentLoaded', function () {
 		updateSigninButtons();
+
+		// If Firestore is available, preload remote tasks and applications on page load
+		(async function preloadRemoteData(){
+			try {
+				if (window.__FB_READY__ && window.FB && window.FB.available) {
+					// Preload tasks and applications from Firestore
+					if (__CACHED_REMOTE_TASKS__ === null) {
+						await allTasks();
+					}
+					if (__CACHED_REMOTE_APPLICATIONS__ === null) {
+						await allApplications();
+					}
+					// Re-render with remote data
+					try { rerenderAll(); } catch(e) {}
+				}
+			} catch(e) { console.warn('Remote data preload failed', e); }
+		})();
+
+		// Background sync: push any local-only items to Firestore when FB becomes available
+		async function syncLocalToFirestore() {
+			if (!window.FB || !window.__FB_READY__ || !window.FB.available) return;
+			const collections = [
+				{ key: 'lh_tasks', col: 'lh_tasks' },
+				{ key: 'lh_applications', col: 'lh_applications' },
+				{ key: 'lh_messages', col: 'lh_messages' },
+				{ key: 'lh_payments', col: 'lh_payments' },
+				{ key: 'lh_users', col: 'lh_users' }
+			];
+			for (const c of collections) {
+				try {
+					const local = read(c.key, []) || [];
+					const remote = await window.FB.getAll(c.col) || [];
+					const remoteLocalIds = (remote||[]).map(r => (r.localId || r.id || r._id) + '');
+					for (const item of local) {
+						const localId = (item.id || item.localId || '') + '';
+						if (!localId) continue;
+						if (!remoteLocalIds.includes(localId)) {
+							try {
+								await window.FB.add(c.col, Object.assign({}, item, { localId }));
+							} catch(e) { console.warn('Failed to push local item to Firestore', c.key, e); }
+						}
+					}
+				} catch(e) { console.warn('syncLocalToFirestore error for', c.key, e); }
+			}
+			// Refresh UI after sync
+			try { rerenderAll(); } catch(e) {}
+		}
+
+		// If FB isn't ready yet, poll briefly until it is and then sync
+		if (window.__FB_READY__ && window.FB && window.FB.available) {
+			// immediate
+			syncLocalToFirestore().catch(()=>{});
+		} else {
+			let fbAttempts = 0;
+			const fbInterval = setInterval(function(){
+				fbAttempts++;
+				if (window.__FB_READY__ && window.FB && window.FB.available) {
+					clearInterval(fbInterval);
+					syncLocalToFirestore().catch(()=>{});
+				} else if (fbAttempts > 60) { // stop after ~6 seconds
+					clearInterval(fbInterval);
+				}
+			}, 100);
+		}
 
 		// If Firestore is available, migrate any locally-stored users and collections to Firestore
 		(async function migrateLocalDataToFirestore(){
@@ -554,11 +701,17 @@
 				const imageFile = (document.getElementById('taskImage')||{}).files ? document.getElementById('taskImage').files[0] : null;
 				const imageData = await fileToDataUrl(imageFile);
 				const task = {title, description, category, location, budget, poster: currentUser().username, image: imageData};
-				const added = addTask(task);
-				(document.getElementById('postResult')||{}).innerHTML = '<div class="alert alert-success mt-3">Task posted successfully.</div>';
-				postForm.reset(); rerenderAll();
-				// navigate to task detail
-				window.location = 'task.html?id=' + added.id;
+				try {
+					const added = await addTask(task);
+					(document.getElementById('postResult')||{}).innerHTML = '<div class="alert alert-success mt-3">Task posted successfully.</div>';
+					postForm.reset(); rerenderAll();
+					// small delay to ensure Firestore index propagation in rare cases, then navigate
+					await new Promise(r => setTimeout(r, 300));
+					window.location = 'task.html?id=' + added.id;
+				} catch (err) {
+					console.error('Error posting task:', err);
+					await showInfo('Error', 'Failed to post task. Please try again.');
+				}
 			});
 		}
 
